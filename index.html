@@ -7,13 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script type="module">
-        // Firebase Imports
+        // Firebase Imports (المكتبات الأساسية للاتصال بقاعدة البيانات)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        setLogLevel('debug');
+        // setLogLevel('debug'); // يمكن تفعيل وضع التصحيح هنا
 
         // General Firebase variables
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
@@ -25,20 +25,19 @@
         let userId = null;
 
         const EGYPT_TIMEZONE = 'Africa/Cairo';
-        // موعد تقديري لبداية امتحانات نصف العام (15 يناير)
-        const EXAM_DATE = new Date(new Date().getFullYear() + 1, 0, 15); 
+        const EXAM_DATE = new Date(new Date().getFullYear() + 1, 0, 15); // 15 يناير
 
-        // قائمة الدروس ونقاطها التقديرية من مجموع 135 نقطة (نصف الـ 270)
+        // قائمة الدروس ونقاطها التقديرية بناءً على الدرجات المتبقية (إجمالي 110 نقطة = 280 درجة هدف)
         const FULL_LESSONS_LIST = {
-            'اللغة العربية': [ 
-                { lesson: 'النصوص (سفينة نوح)', points: 8 }, 
-                { lesson: 'النحو (المنادى)', points: 8 }, 
-                { lesson: 'النصوص (عباد الرحمن)', points: 8 }, 
-                { lesson: 'النحو (البدل)', points: 8 }, 
-                { lesson: 'قصة (الفصل الأول)', points: 4 }, 
-                { lesson: 'قصة (الفصل الثاني)', points: 4 } 
+            'اللغة العربية': [ // 40 نقطة
+                { lesson: 'النصوص (سفينة نوح)', points: 7 }, 
+                { lesson: 'النحو (المنادى)', points: 7 }, 
+                { lesson: 'النصوص (عباد الرحمن)', points: 7 }, 
+                { lesson: 'النحو (البدل)', points: 7 }, 
+                { lesson: 'قصة (الفصل الأول)', points: 6 }, 
+                { lesson: 'قصة (الفصل الثاني)', points: 6 } 
             ], 
-            'اللغة الإنجليزية': [ 
+            'اللغة الإنجليزية': [ // 30 نقطة
                 { lesson: 'Unit 1: Personal Identity', points: 5 }, 
                 { lesson: 'Unit 2: Communication', points: 5 }, 
                 { lesson: 'Unit 3: AI', points: 5 }, 
@@ -46,21 +45,22 @@
                 { lesson: 'Unit 5: Design Thinking', points: 5 }, 
                 { lesson: 'Unit 6: Why Do We Like Stories?', points: 5 } 
             ], 
-            'العلوم': [ 
-                { lesson: 'الوحدة 1: القوى والحركة', points: 7 }, 
-                { lesson: 'الوحدة 2: المرايا والعدسات', points: 8 }, 
-                { lesson: 'الوحدة 3: الكون والنظام الشمسي', points: 8 }, 
-                { lesson: 'الوحدة 4: الانقسام الخلوي', points: 7 }, 
-                { lesson: 'الوحدة 4: التكاثر واستمرار النوع', points: 5 } 
+            'العلوم': [ // 20 نقطة
+                { lesson: 'الوحدة 1: القوى والحركة', points: 4 }, 
+                { lesson: 'الوحدة 2: المرايا والعدسات', points: 4 }, 
+                { lesson: 'الوحدة 3: الكون والنظام الشمسي', points: 4 }, 
+                { lesson: 'الوحدة 4: الانقسام الخلوي', points: 4 }, 
+                { lesson: 'الوحدة 4: التكاثر واستمرار النوع', points: 4 } 
             ], 
-            'الدراسات الاجتماعية': [ 
-                { lesson: 'جغرافيا (و1: الجغرافيا الطبيعية للعالم)', points: 8 }, 
-                { lesson: 'جغرافيا (و2: سكان العالم)', points: 7 }, 
-                { lesson: 'تاريخ (و3: مصر تحت الحكم العثماني)', points: 8 }, 
-                { lesson: 'تاريخ (و4: الزحف الاستعماري)', points: 7 } 
-            ] 
+            'الدراسات الاجتماعية': [ // 20 نقطة
+                { lesson: 'جغرافيا (و1: الجغرافيا الطبيعية للعالم)', points: 5 }, 
+                { lesson: 'جغرافيا (و2: سكان العالم)', points: 5 }, 
+                { lesson: 'تاريخ (و3: مصر تحت الحكم العثماني)', points: 5 }, 
+                { lesson: 'تاريخ (و4: الزحف الاستعماري)', points: 5 } 
+            ]
+            // **ملاحظة: تم إزالة مادة الرياضيات بناءً على طلب المستخدم الأخير.**
         };
-        const TOTAL_MAX_SCORE = 135; // مجموع النقاط التقديرية
+        const TOTAL_MAX_SCORE = 110; // مجموع النقاط التقديرية (40+30+20+20 = 110)
 
         const STATE = {
             isAuthReady: false,
@@ -136,6 +136,10 @@
         }
 
         function getDocRef() {
+            if (!db || !userId) {
+                console.error("Database or User ID is not ready.");
+                return null;
+            }
             return doc(db, 'artifacts', appId, 'users', userId, DATA_COLLECTION, DATA_DOC);
         }
 
@@ -143,13 +147,14 @@
             if (!db || !userId) return;
 
             const docRef = getDocRef();
+            if (!docRef) return; 
 
             onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     STATE.currentAfirPoints = data.currentAfirPoints || 0;
                     STATE.studyTimeToday = data.studyTimeToday || 0;
-                    STATE.lessonsCompletionStatus = data.lessonsCompletionStatus || STATE.lessonsCompletionStatus;
+                    STATE.lessonsCompletionStatus = { ...STATE.lessonsCompletionStatus, ...data.lessonsCompletionStatus };
                     STATE.schedule = data.schedule || STATE.schedule;
                     STATE.lastScheduleDate = data.lastScheduleDate;
                     STATE.dailyTasks = data.dailyTasks || [];
@@ -167,6 +172,7 @@
         async function saveData() {
             if (!db || !userId) return;
             const docRef = getDocRef();
+            if (!docRef) return; 
             try {
                 await setDoc(docRef, {
                     currentAfirPoints: STATE.currentAfirPoints,
@@ -183,10 +189,9 @@
             }
         }
         
-        // --- Audio Functions (Added for the user request) ---
+        // --- Audio Functions ---
         function playSound(soundFile) {
             // ملاحظة: يجب أن يكون ملف الصوت (مثل 'alert.mp3') موجوداً في مجلد المشروع.
-            // يمكنك استبدال 'alert.mp3' بملف صوت من اختيارك (مثل صوت تيك توك).
             const audio = new Audio(soundFile);
             audio.play().catch(e => console.error("Could not play sound:", e));
         }
@@ -194,7 +199,6 @@
         // --- Daily Task Generation Logic (Finish in 30 Days) ---
         
         function getFormattedDate(date) {
-            // Converts to YYYY-MM-DD format for storage comparison
             return date.toLocaleDateString('en-CA', { timeZone: EGYPT_TIMEZONE });
         }
 
@@ -203,7 +207,7 @@
             const todayFormatted = getFormattedDate(new Date(nowEgypt));
 
             if (STATE.lastScheduleDate !== todayFormatted) {
-                STATE.studyTimeToday = 0; // Reset study time for the new day
+                STATE.studyTimeToday = 0; 
             }
 
             if (STATE.lastScheduleDate !== todayFormatted || STATE.dailyTasks.length === 0) {
@@ -219,7 +223,7 @@
                 const targetTasks = 2; // Target 2 new lessons per day
                 STATE.dailyTasks = [];
                 
-                allUncompletedLessons.sort(() => Math.random() - 0.5); // Shuffle for variety
+                allUncompletedLessons.sort(() => Math.random() - 0.5); 
 
                 for (let i = 0; i < Math.min(targetTasks, allUncompletedLessons.length); i++) {
                     const lesson = allUncompletedLessons[i];
@@ -231,8 +235,19 @@
                     });
                 }
                 
-                if (STATE.dailyTasks.length === 0 && allUncompletedLessons.length === 0) {
-                    STATE.dailyTasks.push({ id: 'REVIEW_DAY', subject: 'تهانينا!', lesson: 'لقد أنهيت المنهج قبل الامتحان! ركز على المراجعة الآن.', isCompleted: false });
+                // إذا لم يكن هناك أي دروس أكاديمية متبقية (21 درس تم إكمالهم)
+                if (STATE.dailyTasks.length === 0) {
+                    const daysRemaining = getDaysUntilExams();
+                    const reviewTask = daysRemaining > 15 ? 
+                        'مراجعة شاملة وحل أسئلة على وحدتين' : 
+                        'حل اختبار شامل للامتحان النهائي';
+                        
+                    STATE.dailyTasks.push({ 
+                        id: `REVIEW_${todayFormatted}`, 
+                        subject: allUncompletedLessons.length === 0 ? 'تهانينا! (مراجعة)' : 'مهمة مراجعة', 
+                        lesson: allUncompletedLessons.length === 0 ? 'لقد أنهيت المنهج! ركز على المراجعة الآن.' : reviewTask, 
+                        isCompleted: false 
+                    });
                 }
 
                 STATE.lastScheduleDate = todayFormatted;
@@ -283,7 +298,7 @@
             if (STATE.timer.isStudyMode) {
                 STATE.currentAfirPoints += pointsGained;
                 showModal(`🎉 تهانينا! أكملت جلسة 50 دقيقة صرامة. كسبت ${pointsGained} نقطة عافِر!`);
-                playSound('alert.mp3'); // تشغيل الصوت عند انتهاء جلسة الدراسة
+                playSound('alert.mp3'); 
                 
                 STATE.timer.isStudyMode = false;
                 STATE.timer.duration = 10 * 60;
@@ -291,7 +306,7 @@
                 document.getElementById('timer-type').textContent = 'استراحة إجبارية (10 دقائق)';
             } else {
                 showModal(`🔥 انتهت الراحة! حان وقت التركيز مجدداً على هدف YES Program.`);
-                playSound('alert.mp3'); // تشغيل الصوت عند انتهاء جلسة الراحة
+                playSound('alert.mp3'); 
                 
                 STATE.timer.isStudyMode = true;
                 STATE.timer.duration = 50 * 60;
@@ -310,7 +325,6 @@
 
         function getEgyptTimeAndDate() {
             const now = new Date();
-            // التعديل: إضافة hour12: true لعرض الوقت بصيغة 12 ساعة (ص/م)
             const time = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: EGYPT_TIMEZONE });
             const date = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: EGYPT_TIMEZONE });
             return { time, date };
@@ -333,7 +347,7 @@
                 }
             });
 
-            // تحويل الدرجات المحققة إلى مجموع فعلي (نضرب في 2 لتقريب المجموع من 280)
+            // تحويل الدرجات المحققة إلى مجموع فعلي (110 نقطة يتم تحويلها إلى 280 درجة)
             const finalAchievedScore = Math.min(Math.round(achievedScore / TOTAL_MAX_SCORE * 280), 280); 
             
             return { achievedScore: finalAchievedScore, totalPossibleScore: 280 };
@@ -345,10 +359,9 @@
             const currentHour = parseInt(nowEgypt.toLocaleTimeString('en-US', { hour: '2-digit', hour12: false, timeZone: EGYPT_TIMEZONE }));
 
             let quote = `لا تستسلم، هل تتذكر هدف YES Program؟ باقي ${daysRemaining} يوم فقط على الامتحانات!`;
-            let icon = 'zap'; // Default icon
+            let icon = 'zap'; 
             let color = 'text-gray-700';
 
-            // Check Study Time
             const studyStartHour = parseInt(STATE.schedule.studyStart.split(':')[0]);
             const studyEndHour = parseInt(STATE.schedule.studyEnd.split(':')[0]);
             
@@ -404,7 +417,11 @@
             document.getElementById('achieved-score').textContent = scores.achievedScore.toLocaleString('ar-EG');
             document.getElementById('total-score').textContent = scores.totalPossibleScore.toLocaleString('ar-EG');
 
-            // 3. Update Schedule Display (No change needed)
+            // 3. Update Schedule Display 
+            document.getElementById('sleep-time-display').textContent = STATE.schedule.sleep;
+            document.getElementById('business-time-display').textContent = STATE.schedule.business;
+            document.getElementById('play-time-display').textContent = STATE.schedule.play;
+            document.getElementById('study-range-display').textContent = `${STATE.schedule.studyStart} - ${STATE.schedule.studyEnd}`;
 
             // 4. Update Daily Tasks
             const tasksContainer = document.getElementById('daily-tasks-container');
@@ -415,8 +432,9 @@
             } else {
                 STATE.dailyTasks.forEach(task => {
                     const isCompleted = task.isCompleted;
+                    const isReviewTask = task.id.startsWith('REVIEW');
                     const taskElement = document.createElement('label');
-                    taskElement.className = `flex items-center justify-between p-4 rounded-xl shadow-sm cursor-pointer transition duration-300 ${isCompleted ? 'bg-green-100 border-l-8 border-green-500' : 'bg-white hover:bg-indigo-50 border-l-8 border-indigo-500'}`;
+                    taskElement.className = `flex items-center justify-between p-4 rounded-xl shadow-sm cursor-pointer transition duration-300 ${isCompleted ? 'bg-green-100 border-l-8 border-green-500' : isReviewTask ? 'bg-yellow-100 border-l-8 border-yellow-500' : 'bg-white hover:bg-indigo-50 border-l-8 border-indigo-500'}`;
                     
                     taskElement.innerHTML = `
                         <div class="flex items-center">
@@ -426,18 +444,17 @@
                                 <p class="text-sm ${isCompleted ? 'text-green-500' : 'text-indigo-600'}">${task.subject}</p>
                             </div>
                         </div>
-                        <i data-lucide="book-open" class="text-gray-400 w-5 h-5"></i>
+                        <i data-lucide="${isReviewTask ? 'rotate-cw' : 'book-open'}" class="text-gray-400 w-5 h-5"></i>
                     `;
                     tasksContainer.appendChild(taskElement);
                 });
             }
 
-            // 5. Update Daily Report (تم التعديل لدمج المهام الأكاديمية والجدول)
+            // 5. Update Daily Report 
             const dailyReport = document.getElementById('daily-report-content');
             const tasksLeft = STATE.dailyTasks.filter(t => !t.isCompleted).length;
             const tasksCompleted = STATE.dailyTasks.filter(t => t.isCompleted).length;
             
-            // حساب الوقت المطلوب بالدقائق
             const timePerTask = 60; // 50 دراسة + 10 راحة
             const totalStudyMinutes = tasksLeft * timePerTask;
             const totalStudyHours = Math.ceil(totalStudyMinutes / 60);
@@ -476,13 +493,16 @@
         window.toggleDailyTask = (checkbox) => {
             const taskId = checkbox.getAttribute('data-id');
             const taskIndex = STATE.dailyTasks.findIndex(t => t.id === taskId);
+            
+            const isAcademicTask = !taskId.startsWith('REVIEW');
 
             if (taskIndex !== -1) {
                 const isCompleted = checkbox.checked;
                 STATE.dailyTasks[taskIndex].isCompleted = isCompleted;
-
-                // Update the master list status
-                STATE.lessonsCompletionStatus[taskId].completed = isCompleted;
+                
+                if(isAcademicTask && STATE.lessonsCompletionStatus[taskId]) {
+                    STATE.lessonsCompletionStatus[taskId].completed = isCompleted;
+                }
 
                 if (isCompleted) {
                     STATE.currentAfirPoints += 100; 
@@ -491,7 +511,6 @@
                     STATE.currentAfirPoints -= 50; 
                 }
                 
-                // If all daily tasks are completed, show a success message
                 if(STATE.dailyTasks.every(t => t.isCompleted)) {
                    showModal(`🎉🎉 أحسنت! لقد أنهيت جميع مهام اليوم في رحلة نجاحك. يمكنك الآن البدء في المراجعة الحرة أو الاستراحة. مهام الغد جاهزة.`);
                 }
@@ -522,7 +541,7 @@
         // Initial setup
         window.onload = () => {
             initializeFirebase();
-            setInterval(updateUI, 1000); // تحديث كل ثانية لعرض التوقيت والعداد التنازلي بدقة
+            setInterval(updateUI, 1000); 
             lucide.createIcons();
         };
 
@@ -531,7 +550,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
         body {
             font-family: 'Cairo', sans-serif;
-            background-color: #eef2ff; /* Very Light Indigo Background */
+            background-color: #eef2ff; 
         }
         .task-card, .schedule-card {
             transition: all 0.3s ease;
@@ -650,36 +669,39 @@
                 <ul class="space-y-4">
                     <li class="flex justify-between items-center text-lg py-2 rounded-lg px-3 bg-red-100">
                         <span class="font-bold text-red-700 flex items-center"><i data-lucide="moon" class="w-5 h-5 ml-2"></i> النوم</span>
-                        <span id="sleep-time" class="font-extrabold text-gray-800 text-xl">22:00</span>
+                        <span id="sleep-time-display" class="font-extrabold text-gray-800 text-xl">22:00</span>
                     </li>
                     <li class="flex justify-between items-center text-lg py-2 rounded-lg px-3 bg-yellow-100">
                         <span class="font-bold text-yellow-800 flex items-center"><i data-lucide="briefcase" class="w-5 h-5 ml-2"></i> العمل/البزنس</span>
-                        <span id="business-time" class="font-extrabold text-gray-800 text-xl">15:00</span>
+                        <span id="business-time-display" class="font-extrabold text-gray-800 text-xl">15:00</span>
                     </li>
                     <li class="flex justify-between items-center text-lg py-2 rounded-lg px-3 bg-blue-100">
                         <span class="font-bold text-blue-700 flex items-center"><i data-lucide="gamepad-2" class="w-5 h-5 ml-2"></i> الراحة/اللعب</span>
-                        <span id="play-time" class="font-extrabold text-gray-800 text-xl">14:00</span>
+                        <span id="play-time-display" class="font-extrabold text-gray-800 text-xl">14:00</span>
                     </li>
                     <li class="flex justify-between items-center text-lg py-2 rounded-lg px-3 bg-green-100">
                         <span class="font-bold text-green-700 flex items-center"><i data-lucide="book-open" class="w-5 h-5 ml-2"></i> الدراسة المحددة</span>
-                        <span id="study-range" class="font-extrabold text-gray-800 text-xl">18:00 - 21:00</span>
+                        <span id="study-range-display" class="font-extrabold text-gray-800 text-xl">18:00 - 21:00</span>
                     </li>
                 </ul>
-                <p class="mt-4 text-xs text-red-500 text-center">التنبيهات تصل إلى بريدك الإلكتروني (بمجرد تفعيلها على السيرفر).</p>
+                <p class="mt-4 text-xs text-red-500 text-center">استخدم مؤقت الصرامة (50/10) في أوقات الدراسة المحددة.</p>
             </div>
 
         </div>
         
         <footer class="mt-12 text-center text-sm text-gray-500 border-t pt-4">
-             <p>معرّف المستخدم (للحفظ): <span class="font-mono text-gray-700" id="user-id-display"></span></p>
+             <p>معرّف المستخدم (للحفظ): <span class="font-mono text-gray-700" id="user-id-display">N/A</span></p>
         </footer>
 
     </div>
     
     <script type="module">
+        // هذا الجزء يتولى تحديث معرّف المستخدم بعد تسجيل الدخول
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('user-id-display').textContent = user.uid;
+            } else {
+                document.getElementById('user-id-display').textContent = 'User not signed in.';
             }
         });
     </script>
