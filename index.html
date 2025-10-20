@@ -7,13 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script type="module">
-        // Firebase Imports (المكتبات الأساسية للاتصال بقاعدة البيانات)
+        // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // setLogLevel('debug'); // يمكن تفعيل وضع التصحيح هنا
+        // setLogLevel('debug');
 
         // General Firebase variables
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
@@ -25,42 +25,43 @@
         let userId = null;
 
         const EGYPT_TIMEZONE = 'Africa/Cairo';
-        const EXAM_DATE = new Date(new Date().getFullYear() + 1, 0, 15); // 15 يناير
+        const EXAM_DATE = new Date(new Date().getFullYear() + 1, 0, 15); 
 
-        // قائمة الدروس ونقاطها التقديرية بناءً على الدرجات المتبقية (إجمالي 110 نقطة = 280 درجة هدف)
+        // قائمة الدروس ونقاطها التقديرية (الإجمالي 135 نقطة = هدف 280 درجة) - تم تعديلها لتطابق محتويات الكتب
         const FULL_LESSONS_LIST = {
             'اللغة العربية': [ // 40 نقطة
-                { lesson: 'النصوص (سفينة نوح)', points: 7 }, 
-                { lesson: 'النحو (المنادى)', points: 7 }, 
-                { lesson: 'النصوص (عباد الرحمن)', points: 7 }, 
-                { lesson: 'النحو (البدل)', points: 7 }, 
-                { lesson: 'قصة (الفصل الأول)', points: 6 }, 
-                { lesson: 'قصة (الفصل الثاني)', points: 6 } 
+                { lesson: 'النحو (المنادى)', points: 8 }, 
+                { lesson: 'النحو (البدل)', points: 8 }, 
+                { lesson: 'النصوص (عباد الرحمن)', points: 8 }, 
+                { lesson: 'النصوص (سفينة نوح)', points: 8 }, 
+                { lesson: 'القصة (الفصول 1-4)', points: 4 }, 
+                { lesson: 'القصة (الفصول 5-9) ومراجعة قصة', points: 4 } 
             ], 
             'اللغة الإنجليزية': [ // 30 نقطة
                 { lesson: 'Unit 1: Personal Identity', points: 5 }, 
-                { lesson: 'Unit 2: Communication', points: 5 }, 
-                { lesson: 'Unit 3: AI', points: 5 }, 
+                { lesson: 'Unit 2: Communication with Family and Friends', points: 5 }, 
+                { lesson: 'Unit 3: Artificial Intelligence', points: 5 }, 
                 { lesson: 'Unit 4: Screen Time', points: 5 }, 
                 { lesson: 'Unit 5: Design Thinking', points: 5 }, 
                 { lesson: 'Unit 6: Why Do We Like Stories?', points: 5 } 
             ], 
-            'العلوم': [ // 20 نقطة
-                { lesson: 'الوحدة 1: القوى والحركة', points: 4 }, 
-                { lesson: 'الوحدة 2: المرايا والعدسات', points: 4 }, 
-                { lesson: 'الوحدة 3: الكون والنظام الشمسي', points: 4 }, 
-                { lesson: 'الوحدة 4: الانقسام الخلوي', points: 4 }, 
-                { lesson: 'الوحدة 4: التكاثر واستمرار النوع', points: 4 } 
+            'العلوم': [ // 35 نقطة
+                { lesson: 'الوحدة 1: الحركة في اتجاه واحد', points: 5 }, 
+                { lesson: 'الوحدة 1: التمثيل البياني والكميات الفيزيائية', points: 5 }, 
+                { lesson: 'الوحدة 2: المرايا', points: 5 }, 
+                { lesson: 'الوحدة 2: العدسات', points: 5 }, 
+                { lesson: 'الوحدة 3: الكون والنظام الشمسي', points: 5 }, 
+                { lesson: 'الوحدة 4: الانقسام الخلوي', points: 5 }, 
+                { lesson: 'الوحدة 4: التكاثر اللاجنسي والجنسي', points: 5 } 
             ], 
-            'الدراسات الاجتماعية': [ // 20 نقطة
-                { lesson: 'جغرافيا (و1: الجغرافيا الطبيعية للعالم)', points: 5 }, 
-                { lesson: 'جغرافيا (و2: سكان العالم)', points: 5 }, 
-                { lesson: 'تاريخ (و3: مصر تحت الحكم العثماني)', points: 5 }, 
-                { lesson: 'تاريخ (و4: الزحف الاستعماري)', points: 5 } 
+            'الدراسات الاجتماعية': [ // 30 نقطة
+                { lesson: 'جغرافيا (و1: الجغرافيا الطبيعية للعالم)', points: 8 }, 
+                { lesson: 'جغرافيا (و2: سكان العالم)', points: 7 }, 
+                { lesson: 'تاريخ (و3: مصر تحت الحكم العثماني)', points: 8 }, 
+                { lesson: 'تاريخ (و4: الزحف الاستعماري والتحرر الوطني)', points: 7 } 
             ]
-            // **ملاحظة: تم إزالة مادة الرياضيات بناءً على طلب المستخدم الأخير.**
         };
-        const TOTAL_MAX_SCORE = 110; // مجموع النقاط التقديرية (40+30+20+20 = 110)
+        const TOTAL_MAX_SCORE = 135; // المجموع الكلي للنقاط (يُضرب في 2 ليصل لـ 270، وهو قريب جداً من هدفك 280)
 
         const STATE = {
             isAuthReady: false,
@@ -82,7 +83,7 @@
                 studyEnd: '21:00', // 9 PM
             },
             lessonsCompletionStatus: {}, 
-            dailyTasks: [] 
+            dailyTasks: [] // المهام اليومية، كل مهمة ستحتوي على خاصية status: 'pending', 'active', or 'completed'
         };
 
         // Initialize completion status
@@ -157,7 +158,12 @@
                     STATE.lessonsCompletionStatus = { ...STATE.lessonsCompletionStatus, ...data.lessonsCompletionStatus };
                     STATE.schedule = data.schedule || STATE.schedule;
                     STATE.lastScheduleDate = data.lastScheduleDate;
-                    STATE.dailyTasks = data.dailyTasks || [];
+                    
+                    // استعادة حالة المهام اليومية مع ضمان وجود خاصية status
+                    STATE.dailyTasks = (data.dailyTasks || []).map(task => ({
+                        ...task,
+                        status: task.status || (task.isCompleted ? 'completed' : 'pending') // تحويل isCompleted القديمة إلى status
+                    }));
 
                     checkAndGenerateDailyTasks();
                 } else {
@@ -191,12 +197,11 @@
         
         // --- Audio Functions ---
         function playSound(soundFile) {
-            // ملاحظة: يجب أن يكون ملف الصوت (مثل 'alert.mp3') موجوداً في مجلد المشروع.
             const audio = new Audio(soundFile);
             audio.play().catch(e => console.error("Could not play sound:", e));
         }
 
-        // --- Daily Task Generation Logic (Finish in 30 Days) ---
+        // --- Daily Task Generation Logic ---
         
         function getFormattedDate(date) {
             return date.toLocaleDateString('en-CA', { timeZone: EGYPT_TIMEZONE });
@@ -210,7 +215,8 @@
                 STATE.studyTimeToday = 0; 
             }
 
-            if (STATE.lastScheduleDate !== todayFormatted || STATE.dailyTasks.length === 0) {
+            // يتم توليد مهام جديدة إذا كان يوماً جديداً أو إذا لم تكن هناك مهام حالية
+            if (STATE.lastScheduleDate !== todayFormatted || STATE.dailyTasks.length === 0 || STATE.dailyTasks.every(t => t.status === 'completed')) {
                 
                 const allUncompletedLessons = [];
                 Object.keys(STATE.lessonsCompletionStatus).forEach(key => {
@@ -220,7 +226,7 @@
                     }
                 });
                 
-                const targetTasks = 2; // Target 2 new lessons per day
+                const targetTasks = 2; // الهدف 2 درس جديد يومياً
                 STATE.dailyTasks = [];
                 
                 allUncompletedLessons.sort(() => Math.random() - 0.5); 
@@ -231,23 +237,12 @@
                         id: lesson.id,
                         subject: lesson.subject,
                         lesson: lesson.lesson,
-                        isCompleted: false 
+                        status: 'pending' // الحالة الأولية
                     });
                 }
                 
-                // إذا لم يكن هناك أي دروس أكاديمية متبقية (21 درس تم إكمالهم)
                 if (STATE.dailyTasks.length === 0) {
-                    const daysRemaining = getDaysUntilExams();
-                    const reviewTask = daysRemaining > 15 ? 
-                        'مراجعة شاملة وحل أسئلة على وحدتين' : 
-                        'حل اختبار شامل للامتحان النهائي';
-                        
-                    STATE.dailyTasks.push({ 
-                        id: `REVIEW_${todayFormatted}`, 
-                        subject: allUncompletedLessons.length === 0 ? 'تهانينا! (مراجعة)' : 'مهمة مراجعة', 
-                        lesson: allUncompletedLessons.length === 0 ? 'لقد أنهيت المنهج! ركز على المراجعة الآن.' : reviewTask, 
-                        isCompleted: false 
-                    });
+                    STATE.dailyTasks.push({ id: `REVIEW_${todayFormatted}`, subject: 'تهانينا! (مراجعة)', lesson: 'لقد أنهيت المنهج! ركز على المراجعة الآن.', status: 'pending' });
                 }
 
                 STATE.lastScheduleDate = todayFormatted;
@@ -255,7 +250,7 @@
             }
         }
 
-        // --- Timer Functions ---
+        // --- Timer Functions (No change) ---
 
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60);
@@ -321,7 +316,7 @@
             updateUI();
         }
 
-        // --- UI Update Functions ---
+        // --- UI Update Functions (No change in core metrics) ---
 
         function getEgyptTimeAndDate() {
             const now = new Date();
@@ -347,7 +342,6 @@
                 }
             });
 
-            // تحويل الدرجات المحققة إلى مجموع فعلي (110 نقطة يتم تحويلها إلى 280 درجة)
             const finalAchievedScore = Math.min(Math.round(achievedScore / TOTAL_MAX_SCORE * 280), 280); 
             
             return { achievedScore: finalAchievedScore, totalPossibleScore: 280 };
@@ -366,22 +360,18 @@
             const studyEndHour = parseInt(STATE.schedule.studyEnd.split(':')[0]);
             
             if (currentHour >= studyStartHour && currentHour < studyEndHour) {
-                // *** وقت الدراسة ***
                 quote = `🔥 حان وقت الصرامة! أنت الآن في فترة المذاكرة المحدّدة (${STATE.schedule.studyStart} - ${STATE.schedule.studyEnd}). التزم بمؤقت 50/10 وانهِ مهام اليوم.`;
                 icon = 'book-open';
                 color = 'text-green-700';
             } else if (currentHour >= parseInt(STATE.schedule.play.split(':')[0]) && currentHour < studyStartHour) {
-                // *** وقت اللعب/الراحة ***
                 quote = `🧘‍♂️ هذا هو وقت الراحة واللعب! استرخي تماماً، وجدّد طاقتك، واستعد لجولة المذاكرة القادمة في تمام ${STATE.schedule.studyStart}.`;
                 icon = 'gamepad-2';
                 color = 'text-blue-700';
             } else if (currentHour >= parseInt(STATE.schedule.sleep.split(':')[0]) || currentHour < 6) {
-                // *** وقت النوم ***
                 quote = `🌙 وقت النوم! النجاح يبدأ بعقل مرتاح وجسم مستعد. لا تنسَ أن ترتاح جيداً لتبدأ "رحلة نجاح" الغد بقوة.`;
                 icon = 'moon';
                 color = 'text-red-700';
             } else if (currentHour >= parseInt(STATE.schedule.business.split(':')[0]) && currentHour < parseInt(STATE.schedule.play.split(':')[0])) {
-                // *** وقت البزنس/العمل ***
                 quote = `💼 وقت العمل/البزنس! استغل هذا الوقت بذكاء لتطوير مهاراتك أو القيام بأعمالك. ستبدأ الراحة قريباً في ${STATE.schedule.play}.`;
                 icon = 'briefcase';
                 color = 'text-yellow-700';
@@ -394,7 +384,7 @@
 
         function updateUI() {
             
-            // 1. Update Time and Exam Countdown
+            // 1. Update Time and Exam Countdown (No change)
             const { time, date } = getEgyptTimeAndDate();
             document.getElementById('current-time').textContent = time;
             document.getElementById('current-date').textContent = date;
@@ -408,7 +398,7 @@
             document.getElementById('motivation-icon-container').className = `text-5xl font-extrabold text-indigo-800 text-center flex items-center justify-center ${color}`;
 
 
-            // 2. Update Timer & Metrics
+            // 2. Update Timer & Metrics (No change)
             document.getElementById('timer-display').textContent = formatTime(STATE.timer.remaining);
             document.getElementById('afir-points').textContent = STATE.currentAfirPoints.toLocaleString('ar-EG');
             document.getElementById('study-time').textContent = Math.floor(STATE.studyTimeToday / 3600).toLocaleString('ar-EG');
@@ -417,45 +407,65 @@
             document.getElementById('achieved-score').textContent = scores.achievedScore.toLocaleString('ar-EG');
             document.getElementById('total-score').textContent = scores.totalPossibleScore.toLocaleString('ar-EG');
 
-            // 3. Update Schedule Display 
+            // 3. Update Schedule Display (No change)
             document.getElementById('sleep-time-display').textContent = STATE.schedule.sleep;
             document.getElementById('business-time-display').textContent = STATE.schedule.business;
             document.getElementById('play-time-display').textContent = STATE.schedule.play;
             document.getElementById('study-range-display').textContent = `${STATE.schedule.studyStart} - ${STATE.schedule.studyEnd}`;
 
-            // 4. Update Daily Tasks
+
+            // 4. Update Daily Tasks - New Logic
             const tasksContainer = document.getElementById('daily-tasks-container');
             tasksContainer.innerHTML = '';
 
             if (STATE.dailyTasks.length === 0) {
-                tasksContainer.innerHTML = `<p class="text-gray-500 p-4 bg-gray-100 rounded-lg text-center">لا توجد مهام جديدة اليوم. <i data-lucide="check-circle" class="w-5 h-5 inline-block text-green-500 mr-1"></i></p>`;
+                 // إضافة زر لتوليد المهام يدوياً كخيار احتياطي
+                tasksContainer.innerHTML = `<p class="text-gray-500 p-4 bg-gray-100 rounded-lg text-center">جاري استدعاء مهام اليوم... إذا لم تظهر اضغط <button onclick="checkAndGenerateDailyTasks(); updateUI();" class="text-indigo-600 font-bold hover:text-indigo-800">هنا</button></p>`;
             } else {
                 STATE.dailyTasks.forEach(task => {
-                    const isCompleted = task.isCompleted;
-                    const isReviewTask = task.id.startsWith('REVIEW');
-                    const taskElement = document.createElement('label');
-                    taskElement.className = `flex items-center justify-between p-4 rounded-xl shadow-sm cursor-pointer transition duration-300 ${isCompleted ? 'bg-green-100 border-l-8 border-green-500' : isReviewTask ? 'bg-yellow-100 border-l-8 border-yellow-500' : 'bg-white hover:bg-indigo-50 border-l-8 border-indigo-500'}`;
+                    const status = task.status;
+                    const isCompleted = status === 'completed';
+                    const isActive = status === 'active';
+                    
+                    let bgColor = 'bg-white hover:bg-indigo-50 border-l-8 border-indigo-500';
+                    let actionButton = `<button onclick="activateDailyTask('${task.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-1 px-3 rounded-full flex items-center shadow-md"><i data-lucide="play-circle" class="w-4 h-4 ml-1"></i> بدء المذاكرة</button>`;
+                    let checkboxDisabled = '';
+
+                    if (isCompleted) {
+                        bgColor = 'bg-green-100 border-l-8 border-green-500';
+                        actionButton = `<span class="text-green-600 font-bold flex items-center"><i data-lucide="check-circle" class="w-5 h-5 ml-1"></i> مكتمل</span>`;
+                        checkboxDisabled = 'disabled';
+                    } else if (isActive) {
+                        bgColor = 'bg-yellow-100 border-l-8 border-yellow-500';
+                        actionButton = `<span class="text-yellow-700 font-bold flex items-center"><i data-lucide="zap" class="w-5 h-5 ml-1"></i> قيد المذاكرة</span>`;
+                        checkboxDisabled = ''; 
+                    }
+                    
+                    const taskElement = document.createElement('div');
+                    taskElement.className = `flex items-start justify-between p-4 rounded-xl shadow-sm transition duration-300 ${bgColor}`;
                     
                     taskElement.innerHTML = `
                         <div class="flex items-center">
-                            <input type="checkbox" data-id="${task.id}" class="h-6 w-6 text-indigo-600 rounded-md focus:ring-indigo-500" ${isCompleted ? 'checked' : ''} onchange="toggleDailyTask(this)">
-                            <div class="mr-4">
+                            <input type="checkbox" data-id="${task.id}" class="h-6 w-6 text-indigo-600 rounded-md focus:ring-indigo-500" ${isCompleted ? 'checked' : ''} ${checkboxDisabled} onchange="toggleDailyTask(this)">
+                            <div class="mr-4 pt-1">
                                 <p class="font-bold ${isCompleted ? 'text-gray-500 line-through' : 'text-gray-800'}">${task.lesson}</p>
                                 <p class="text-sm ${isCompleted ? 'text-green-500' : 'text-indigo-600'}">${task.subject}</p>
                             </div>
                         </div>
-                        <i data-lucide="${isReviewTask ? 'rotate-cw' : 'book-open'}" class="text-gray-400 w-5 h-5"></i>
+                        <div class="flex-shrink-0">
+                            ${actionButton}
+                        </div>
                     `;
                     tasksContainer.appendChild(taskElement);
                 });
             }
 
-            // 5. Update Daily Report 
+            // 5. Update Daily Report (No change)
             const dailyReport = document.getElementById('daily-report-content');
-            const tasksLeft = STATE.dailyTasks.filter(t => !t.isCompleted).length;
-            const tasksCompleted = STATE.dailyTasks.filter(t => t.isCompleted).length;
+            const tasksLeft = STATE.dailyTasks.filter(t => t.status !== 'completed').length;
+            const tasksCompleted = STATE.dailyTasks.filter(t => t.status === 'completed').length;
             
-            const timePerTask = 60; // 50 دراسة + 10 راحة
+            const timePerTask = 60; 
             const totalStudyMinutes = tasksLeft * timePerTask;
             const totalStudyHours = Math.ceil(totalStudyMinutes / 60);
 
@@ -490,29 +500,67 @@
         }
 
         
+        // --- NEW LOGIC: Activate Task ---
+        window.activateDailyTask = (taskId) => {
+            const taskIndex = STATE.dailyTasks.findIndex(t => t.id === taskId);
+            
+            if (taskIndex !== -1 && STATE.dailyTasks[taskIndex].status === 'pending') {
+                // أولاً: إعادة تعيين أي مهمة أخرى إلى حالة 'pending' (مهمة واحدة نشطة فقط)
+                STATE.dailyTasks.forEach(task => {
+                    if (task.id !== taskId && task.status === 'active') {
+                        task.status = 'pending';
+                    }
+                });
+                
+                // ثانياً: تعيين المهمة المختارة إلى حالة 'active'
+                STATE.dailyTasks[taskIndex].status = 'active';
+                
+                showModal(`بدأت المذاكرة! 🚀 قم الآن بتشغيل مؤقت الصرامة (50/10) على مهمة: ${STATE.dailyTasks[taskIndex].lesson}`);
+
+                saveData();
+                updateUI();
+            } else if (STATE.dailyTasks[taskIndex].status === 'active') {
+                showModal(`هذه المهمة ${STATE.dailyTasks[taskIndex].lesson} بالفعل قيد المذاكرة.`);
+            }
+        };
+
+        // --- UPDATED LOGIC: Toggle Completion ---
         window.toggleDailyTask = (checkbox) => {
             const taskId = checkbox.getAttribute('data-id');
             const taskIndex = STATE.dailyTasks.findIndex(t => t.id === taskId);
             
-            const isAcademicTask = !taskId.startsWith('REVIEW');
-
             if (taskIndex !== -1) {
-                const isCompleted = checkbox.checked;
-                STATE.dailyTasks[taskIndex].isCompleted = isCompleted;
+                const isCompleting = checkbox.checked;
                 
-                if(isAcademicTask && STATE.lessonsCompletionStatus[taskId]) {
-                    STATE.lessonsCompletionStatus[taskId].completed = isCompleted;
+                if (isCompleting && STATE.dailyTasks[taskIndex].status === 'pending') {
+                    // منع الإكمال إذا لم يتم البدء بها أولاً
+                    checkbox.checked = false; // إلغاء التحديد
+                    showModal(`يجب أن تبدأ مذاكرة المهمة أولاً (زر "بدء المذاكرة") قبل إكمالها. ركز على الصرامة!`);
+                    updateUI();
+                    return;
                 }
 
-                if (isCompleted) {
+                if (isCompleting) {
+                    STATE.dailyTasks[taskIndex].status = 'completed';
+                    
+                    // تحديث الحالة في قائمة الدروس الأساسية
+                    if(STATE.lessonsCompletionStatus[taskId]) {
+                        STATE.lessonsCompletionStatus[taskId].completed = true;
+                    }
+                    
                     STATE.currentAfirPoints += 100; 
                     showModal(`🔥 ممتاز! أنهيت مهمة ${STATE.dailyTasks[taskIndex].lesson}. كسبت 100 نقطة عافِر!`);
                 } else {
+                    // إذا ألغى الإكمال، نرجعها إلى pending
+                    STATE.dailyTasks[taskIndex].status = 'pending';
+                    if(STATE.lessonsCompletionStatus[taskId]) {
+                        STATE.lessonsCompletionStatus[taskId].completed = false;
+                    }
                     STATE.currentAfirPoints -= 50; 
                 }
                 
-                if(STATE.dailyTasks.every(t => t.isCompleted)) {
-                   showModal(`🎉🎉 أحسنت! لقد أنهيت جميع مهام اليوم في رحلة نجاحك. يمكنك الآن البدء في المراجعة الحرة أو الاستراحة. مهام الغد جاهزة.`);
+                if(STATE.dailyTasks.every(t => t.status === 'completed')) {
+                   showModal(`🎉🎉 أحسنت! لقد أنهيت جميع مهام اليوم في رحلة نجاحك. مهام الغد جاهزة.`);
                 }
 
                 saveData();
@@ -696,7 +744,6 @@
     </div>
     
     <script type="module">
-        // هذا الجزء يتولى تحديث معرّف المستخدم بعد تسجيل الدخول
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('user-id-display').textContent = user.uid;
